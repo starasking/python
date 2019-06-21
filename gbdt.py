@@ -72,8 +72,10 @@ def split_branch(df, output_col):
 
 def grow_tree(df, split_feature, nodes, tree, leaves):
     for node in nodes:
-        subtree = Tree(node.entropy, node.value, split_feature, node.character)
+        subtree = Tree(node.entropy, node.value, "", node.character)
         tree.branches[node.character] = subtree
+        print(split_feature)
+        print(tree.branches)
         subdf = df[df[split_feature] == node.character]
         del subdf[split_feature]
         leaves[subtree] = subdf
@@ -82,21 +84,37 @@ def grow_tree(df, split_feature, nodes, tree, leaves):
 def create_tree(df, output_col):
     entropy = df[output_col].std(ddof=0)
     value = df[output_col].mean()
-    tree = Tree(entropy, value, "", "")
-    leaves = {}
     (split_feature, nodes) = split_branch(df, output_col)
+    tree = Tree(entropy, value, split_feature, "")
+    leaves = {}
+
     print(df)
     print(split_feature)
+
     for node in nodes:
         print(node.entropy, node.character)
     (new_tree, new_leaves) = grow_tree(df, split_feature, nodes, tree, leaves)
     tree = new_tree
     leaves = new_leaves
 
+    #print("=============================")
+    #print(tree.value)
+    #print(tree.entropy)
+    #print(tree.feature)
+    #print(tree.branches)
+    #print("=============================")
     while bool(leaves):
         subtree = list(leaves.keys())[0]
         df = leaves[subtree]
         (split_feature, nodes) = split_branch(df, output_col)
+        subtree.feature = split_feature
+        #print("=============================")
+        #print(subtree.value)
+        #print(subtree.entropy)
+        #print(subtree.feature)
+        #print(subtree.branches)
+        #print("=============================")
+        #input("pause")
         if split_feature == "":
             del leaves[subtree]
             continue
@@ -104,22 +122,34 @@ def create_tree(df, output_col):
         print(split_feature)
         for node in nodes:
             print(node.entropy, node.character)
-        (new_tree, new_leaves) = grow_tree(df, split_feature, nodes, tree, leaves)
+        (new_tree, new_leaves) = grow_tree(df, split_feature, nodes, subtree, leaves)
         del leaves[subtree]
-        tree = new_tree
+        subtree = new_tree
         leaves = new_leaves
     return tree
 
 tree = create_tree(df, "Decision")
-print(tree.feature)
-'''
+
 def predict(query, tree):
     while query.shape[1] > 0:
-        print(query)
-        #print(query[tree.feature])
-        #tree = tree.branches[query[tree.feature]]
-        del query[tree.feature]
-    #return tree.value
+        current_feature = tree.feature
+        if query[tree.feature][0] not in tree.branches.keys():
+            return tree.value
+        tree = tree.branches[query[tree.feature][0]]
+        del query[current_feature]
+    return tree.value
 
-predict(query, tree)
-'''
+#def print_tree(tree):
+    #print("=============================")
+    #print(tree.value)
+    #print(tree.entropy)
+    #print(tree.feature)
+    #print(tree.branches)
+
+#print_tree(tree)
+#print_tree(tree.branches['Sunny'])
+#print(df)
+#print(query)
+
+print("=============================")
+print(predict(query, tree))
