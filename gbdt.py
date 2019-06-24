@@ -17,7 +17,7 @@ input_data = np.array([['Sunny', 'Hot', 'High', 'Weak', 25.0],
                        ['Rain', 'Mild', 'High', 'Strong', 30.0]])
 
 col_names = ['Outlook', 'Temp', 'Humididty', 'Wind', 'Decision']
-index = [i for i in range(1, 15)]
+index = [i for i in range(14)]
 df = pd.DataFrame(input_data, columns = col_names, index = index)
 df['Decision'] = df['Decision'].astype('float')
 Entropy_threshold = 6
@@ -25,6 +25,11 @@ Entropy_threshold = 6
 query = pd.DataFrame(np.array([['Sunny', 'Hot', 'Normal', 'Weak']]),
                      columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
 
+query_2 = pd.DataFrame(np.array([['Sunny', 'Hot', 'High', 'Weak']]),
+                     columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
+
+query_3 = pd.DataFrame(np.array([['Overcast', 'Hot', 'High', 'Weak']]),
+                     columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
 class Tree:
     def __init__(self, entropy, value, split_feature):
         self.entropy = entropy
@@ -92,15 +97,40 @@ def create_tree(df, output_col):
 
 tree = create_tree(df, "Decision")
 
-print(df)
+#print(df)
+
 def predict(query, tree):
+    new_tree = tree
     while query.shape[1] > 0:
-        current_feature = tree.feature
-        if current_feature == "" or query[tree.feature][0] not in tree.branches.keys():
-            return tree.value
-        tree = tree.branches[query[tree.feature][0]]
+        current_feature = new_tree.feature
+        if current_feature == "" or query[new_tree.feature][0] not in new_tree.branches.keys():
+            return new_tree.value
+        new_tree = new_tree.branches[query[new_tree.feature][0]]
         del query[current_feature]
-    return tree.value
-print("=============================")
+    return new_tree.value
+
+def predict_2(query_df, tree):
+    for index in range(len(query_df)):
+        new_tree = tree
+        ground_truth = query_df.iloc[index]['Decision']
+        query = query_df.iloc[[index]]
+        del query['Decision']
+        while query.shape[1] > 1:
+            current_feature = new_tree.feature
+            if current_feature == "" or query[new_tree.feature][index] not in new_tree.branches.keys():
+                print(new_tree.value, ground_truth)
+                break
+            new_tree = new_tree.branches[query[new_tree.feature][index]]
+            del query[current_feature]
+        print(new_tree.value, ground_truth)
+
+def relabel(df, tree):
+    pass
+
 print(query)
 print(predict(query, tree))
+#print(predict(query_2, tree))
+#print(predict(query_3, tree))
+print("=============================")
+#print(predict_2(df, tree))
+predict_2(df, tree)
