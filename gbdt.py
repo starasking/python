@@ -20,7 +20,7 @@ col_names = ['Outlook', 'Temp', 'Humididty', 'Wind', 'Decision']
 index = [i for i in range(1, 15)]
 df = pd.DataFrame(input_data, columns = col_names, index = index)
 df['Decision'] = df['Decision'].astype('float')
-Entropy_threshold = 3
+Entropy_threshold = 6
 
 query = pd.DataFrame(np.array([['Sunny', 'Hot', 'Normal', 'Weak']]),
                      columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
@@ -39,7 +39,6 @@ def split_branch(df, output_col):
     features = list(df.columns)
     features.remove(output_col)
 
-    # TODO: add stop condition
     if len(features) == 0 or entropy_pre < Entropy_threshold:
         return Tree(entropy_pre, value, "")
 
@@ -65,7 +64,7 @@ def split_branch(df, output_col):
 
     tree = Tree(entropy_pre, value, split_feature)
     for character in return_characters:
-        tree.branches[character] = None #Tree(0.0, 0.0, "")
+        tree.branches[character] = None
     return tree
 
 def grow_tree(df, output_col, leaves):
@@ -83,15 +82,8 @@ def grow_tree(df, output_col, leaves):
 def create_tree(df, output_col):
     leaves = {}
     (tree, leaves) = grow_tree(df, output_col, leaves)
-    print("=============================")
-    print(df)
-    print("-----------------------------")
-    print(tree.entropy)
-    print(tree.value)
-    print(tree.feature)
 
     for character in tree.branches.keys():
-        print(character)
         subtree = tree.branches[character]
         subdf = leaves[subtree]
         newtree = create_tree(subdf, output_col)
@@ -99,7 +91,6 @@ def create_tree(df, output_col):
     return tree
 
 tree = create_tree(df, "Decision")
-
 
 print(df)
 def predict(query, tree):
