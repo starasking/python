@@ -21,6 +21,7 @@ index = [i for i in range(14)]
 df = pd.DataFrame(input_data, columns = col_names, index = index)
 df['Decision'] = df['Decision'].astype('float')
 Entropy_threshold = 6
+Decay_ratio = 0.5
 
 query = pd.DataFrame(np.array([['Sunny', 'Hot', 'Normal', 'Weak']]),
                      columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
@@ -38,13 +39,13 @@ class Tree:
         self.branches = {}
 
 
-def split_branch(df, output_col):
+def split_branch(df, output_col, threshold):
     entropy_pre = df[output_col].std(ddof=0)
     value = df[output_col].mean()
     features = list(df.columns)
     features.remove(output_col)
 
-    if len(features) == 0 or entropy_pre < Entropy_threshold:
+    if len(features) == 0 or entropy_pre < threshold:
         return Tree(entropy_pre, value, "")
 
     split_feature = features[0]
@@ -72,30 +73,30 @@ def split_branch(df, output_col):
         tree.branches[character] = None
     return tree
 
-def grow_tree(df, output_col, leaves):
-    tree = split_branch(df, output_col)
+def grow_tree(df, output_col, leaves, threshold):
+    tree = split_branch(df, output_col, threshold)
     if tree.feature == "":
         return (tree, leaves)
     for character in tree.branches.keys():
         subdf = df[df[tree.feature] == character]
         del subdf[tree.feature]
-        subtree = split_branch(subdf, output_col)
+        subtree = split_branch(subdf, output_col, threshold)
         tree.branches[character] = subtree
         leaves[subtree] = subdf
     return (tree, leaves)
 
-def create_tree(df, output_col):
+def create_tree(df, output_col, threshold):
     leaves = {}
-    (tree, leaves) = grow_tree(df, output_col, leaves)
+    (tree, leaves) = grow_tree(df, output_col, leaves, threshold)
 
     for character in tree.branches.keys():
         subtree = tree.branches[character]
         subdf = leaves[subtree]
-        newtree = create_tree(subdf, output_col)
-        tree.branches[character] = newtree 
+        newtree = create_tree(subdf, output_col, threshold)
+        tree.branches[character] = newtree
     return tree
 
-tree = create_tree(df, "Decision")
+tree = create_tree(df, "Decision", Entropy_threshold)
 
 #print(df)
 
@@ -118,19 +119,76 @@ def predict_2(query_df, tree):
         while query.shape[1] > 1:
             current_feature = new_tree.feature
             if current_feature == "" or query[new_tree.feature][index] not in new_tree.branches.keys():
-                print(new_tree.value, ground_truth)
                 break
             new_tree = new_tree.branches[query[new_tree.feature][index]]
             del query[current_feature]
         print(new_tree.value, ground_truth)
 
-def relabel(df, tree):
-    pass
+def relabel(df, tree, output_col):
+    newdf = df.copy()
+    for index in range(len(newdf)):
+        new_tree = tree
+        ground_truth = newdf.iloc[index][output_col]
+        query = newdf.iloc[[index]]
+        del query[output_col]
+        while query.shape[1] > 1:
+            current_feature = new_tree.feature
+            if current_feature == "" or query[new_tree.feature][index] not in new_tree.branches.keys():
+                label = new_tree.value - ground_truth
+                newdf[output_col][index] = label
+                break
+            new_tree = new_tree.branches[query[new_tree.feature][index]]
+            del query[current_feature]
+        label = new_tree.value -  ground_truth
+        #print(newdf[output_col][index])
+        newdf[output_col][index] = label
+    return newdf
+
+threshold = Entropy_threshold
+forest = []
+df_list = []
+
+for epoch in range(5):
+    output_col = 'Decision'
+    tree = create_tree(df, output_col, threshold)
+    forest.append(tree)
+    df_list.append(df)
+    newdf = relabel(df, tree, output_col)
+    df = newdf.copy()
+    threshold *= 0.5
+
+print(df)
+print(len(forest))
+print(len(df_list))
+
+def print_tree(tree):
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(tree.value)
+    print(tree.entropy)
+    print(tree.feature)
+    if tree.feature != "" and tree.branches != {}:
+        for character in tree.branches.keys():
+            print(character)
+            print_tree(tree.branches[character])
+
+for i in range(len(forest)):
+    print("=============================")
+    print(df_list[i])
+    print("-----------------------------")
+    print_tree(forest[i])
+
+
+'''
+newdf = relabel(df, tree, 'Decision')
+print(df)
+print("=============================")
+print(newdf)
+print("=============================")
+predict_2(df, tree)
 
 print(query)
 print(predict(query, tree))
 #print(predict(query_2, tree))
 #print(predict(query_3, tree))
-print("=============================")
 #print(predict_2(df, tree))
-predict_2(df, tree)
+'''
