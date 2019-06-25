@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
+from sklearn.metrics import r2_score, mean_squared_error
 
+
+# input data
 input_data = np.array([['Sunny', 'Hot', 'High', 'Weak', 25.0],
                        ['Sunny', 'Hot', 'High', 'Strong', 30.0],
                        ['Overcast', 'Hot', 'High', 'Weak', 46.0],
@@ -20,8 +23,6 @@ col_names = ['Outlook', 'Temp', 'Humididty', 'Wind', 'Decision']
 index = [i for i in range(14)]
 df = pd.DataFrame(input_data, columns = col_names, index = index)
 df['Decision'] = df['Decision'].astype('float')
-Entropy_threshold = 6
-Decay_ratio = 0.5
 
 query = pd.DataFrame(np.array([['Sunny', 'Hot', 'Normal', 'Weak']]),
                      columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
@@ -31,6 +32,13 @@ query_2 = pd.DataFrame(np.array([['Sunny', 'Hot', 'High', 'Weak']]),
 
 query_3 = pd.DataFrame(np.array([['Overcast', 'Hot', 'High', 'Weak']]),
                      columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
+
+# parameters
+Entropy_threshold = 7
+Decay_ratio = 0.5
+Stoptree_threshold = 0.0
+
+
 class Tree:
     def __init__(self, entropy, value, split_feature):
         self.entropy = entropy
@@ -96,9 +104,7 @@ def create_tree(df, output_col, threshold):
         tree.branches[character] = newtree
     return tree
 
-tree = create_tree(df, "Decision", Entropy_threshold)
-
-#print(df)
+#tree = create_tree(df, "Decision", Entropy_threshold)
 
 def predict(query, tree):
     new_tree = tree
@@ -147,7 +153,9 @@ def relabel(df, tree, output_col):
 threshold = Entropy_threshold
 forest = []
 df_list = []
+mse_list = []
 
+'''
 for epoch in range(5):
     output_col = 'Decision'
     tree = create_tree(df, output_col, threshold)
@@ -155,26 +163,42 @@ for epoch in range(5):
     df_list.append(df)
     newdf = relabel(df, tree, output_col)
     df = newdf.copy()
-    threshold *= 0.5
+    mse = (newdf[output_col] ** 2).mean()
+    mse_list.append(mse)
+    threshold *= Decay_ratio
+'''
 
-print(df)
-print(len(forest))
-print(len(df_list))
+def gbdt(df, rounds, output_col, decay_ratio, threshold, stoptree_threshold):
+    for epoch in range(rounds):
+        tree = create_tree(df, output_col, threshold)
+        forest.append(tree)
+        df_list.append(df)
+        newdf = relabel(df, tree, output_col)
+        df = newdf.copy()
+        mse = np.sqrt((newdf[output_col] ** 2).mean())
+        mse_list.append(mse)
+        if mse < stoptree_threshold:
+            return (forest, df_list, mse_list)
+        threshold *= decay_ratio
+    return (forest, df_list, mse_list)
 
 def print_tree(tree):
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print(tree.value)
     print(tree.entropy)
     print(tree.feature)
+    print("..............................")
     if tree.feature != "" and tree.branches != {}:
         for character in tree.branches.keys():
             print(character)
             print_tree(tree.branches[character])
 
+(forest, df_list, mse_list) = gbdt(df, 5, 'Decision', Decay_ratio, Entropy_threshold, Stoptree_threshold)
 for i in range(len(forest)):
     print("=============================")
     print(df_list[i])
     print("-----------------------------")
+    print(mse_list[i])
     print_tree(forest[i])
 
 
