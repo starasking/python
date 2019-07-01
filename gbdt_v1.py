@@ -3,6 +3,41 @@ import numpy as np
 from sklearn.metrics import r2_score, mean_squared_error
 
 
+# input data
+input_data = np.array([['Sunny', 'Hot', 'High', 'Weak', 25.0],
+                       ['Sunny', 'Hot', 'High', 'Strong', 30.0],
+                       ['Overcast', 'Hot', 'High', 'Weak', 46.0],
+                       ['Rain', 'Mild', 'High', 'Weak', 45.0],
+                       ['Rain', 'Cool', 'Normal', 'Weak', 52.0],
+                       ['Rain', 'Cool', 'Normal', 'Strong', 23.0],
+                       ['Overcast', 'Cool', 'Normal', 'Strong', 43.0],
+                       ['Sunny', 'Mild', 'High', 'Weak', 35.0],
+                       ['Sunny', 'Cool', 'Normal', 'Weak', 38.0],
+                       ['Rain', 'Mild', 'Normal', 'Weak', 46.0],
+                       ['Sunny', 'Mild', 'Normal', 'Strong', 48.0],
+                       ['Overcast', 'Mild', 'High', 'Strong', 52.0],
+                       ['Overcast', 'Hot', 'Normal', 'Weak', 44.0],
+                       ['Rain', 'Mild', 'High', 'Strong', 30.0]])
+
+col_names = ['Outlook', 'Temp', 'Humididty', 'Wind', 'Decision']
+index = [i for i in range(14)]
+df = pd.DataFrame(input_data, columns = col_names, index = index)
+df['Decision'] = df['Decision'].astype('float')
+
+query = pd.DataFrame(np.array([['Sunny', 'Hot', 'Normal', 'Weak']]),
+                     columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
+
+query_2 = pd.DataFrame(np.array([['Sunny', 'Hot', 'High', 'Weak']]),
+                     columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
+
+query_3 = pd.DataFrame(np.array([['Overcast', 'Hot', 'High', 'Weak']]),
+                     columns = ['Outlook', 'Temp', 'Humididty', 'Wind'])
+
+# parameters
+Entropy_threshold = 7
+Decay_ratio = 0.5
+Stoptree_threshold = 0.0
+
 
 class Tree:
     def __init__(self, entropy, value, split_feature):
@@ -11,12 +46,6 @@ class Tree:
         self.feature = split_feature
         self.branches = {}
 
-
-class GBDT:
-    def __init__(self, df, output_col, rounds = 5, decay_ratio = 0.5, stopforest_threshold = 0.1):
-        self.df = df
-        self.rounds = 5
-        self.stoptree_threshold = df[output_col].std(ddof=0)
 
 def split_branch(df, output_col, threshold):
     entropy_pre = df[output_col].std(ddof=0)
@@ -75,7 +104,7 @@ def create_tree(df, output_col, threshold):
         tree.branches[character] = newtree
     return tree
 
-#tree = create_tree(df, "Decision", Stoptree_threshold)
+#tree = create_tree(df, "Decision", Entropy_threshold)
 
 def predict(query, tree):
     new_tree = tree
@@ -121,12 +150,25 @@ def relabel(df, tree, output_col):
         newdf[output_col][index] = label
     return newdf
 
-threshold = Stoptree_threshold
+threshold = Entropy_threshold
 forest = []
 df_list = []
 mse_list = []
 
-def train(df, rounds, output_col, decay_ratio, threshold, stopforest_threshold):
+'''
+for epoch in range(5):
+    output_col = 'Decision'
+    tree = create_tree(df, output_col, threshold)
+    forest.append(tree)
+    df_list.append(df)
+    newdf = relabel(df, tree, output_col)
+    df = newdf.copy()
+    mse = (newdf[output_col] ** 2).mean()
+    mse_list.append(mse)
+    threshold *= Decay_ratio
+'''
+
+def gbdt(df, rounds, output_col, decay_ratio, threshold, stoptree_threshold):
     for epoch in range(rounds):
         tree = create_tree(df, output_col, threshold)
         forest.append(tree)
@@ -135,7 +177,7 @@ def train(df, rounds, output_col, decay_ratio, threshold, stopforest_threshold):
         df = newdf.copy()
         mse = np.sqrt((newdf[output_col] ** 2).mean())
         mse_list.append(mse)
-        if mse < stopforest_threshold:
+        if mse < stoptree_threshold:
             return (forest, df_list, mse_list)
         threshold *= decay_ratio
     return (forest, df_list, mse_list)
@@ -151,7 +193,7 @@ def print_tree(tree):
             print(character)
             print_tree(tree.branches[character])
 
-(forest, df_list, mse_list) = train(df, 5, 'Decision', Decay_ratio, Stoptree_threshold, stopforest_threshold)
+(forest, df_list, mse_list) = gbdt(df, 5, 'Decision', Decay_ratio, Entropy_threshold, Stoptree_threshold)
 for i in range(len(forest)):
     print("=============================")
     print(df_list[i])
