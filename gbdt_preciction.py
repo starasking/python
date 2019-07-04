@@ -80,7 +80,7 @@ def readLightGBM(file):
             line = lines[i]
             if line.startswith('feature_names'):
                features = line.split('=')[1].split('\n')[0].split(' ')
-               print(features[:20])
+               #print(features[:20])
             if line.startswith('Tree='):
                 #print('\n')
                 #print(line.split('\n')[0]) 
@@ -155,5 +155,12 @@ printTree(tree)
 
 def predict(tree, sample):
     while not tree.is_leave:
+        value = sample[tree.split_feature]
+        if value <= tree.threshold:
+            tree = tree.left
+        else:
+            tree = tree.right
+    return tree.value
 
-
+prediction = predict(tree, sample)
+print(prediction)
