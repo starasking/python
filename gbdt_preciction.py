@@ -26,8 +26,8 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
     assert(len(left_child) == len(right_child))
     assert(len(left_child) + 1 == len(leaf_value))
 
-    root_split_feature = split_feature.pop()
-    root_threshold = threshold.pop()
+    root_split_feature = split_feature.pop(0)
+    root_threshold = threshold.pop(0)
     root = Tree(0, root_split_feature, root_threshold)
     branches = [root]
 
@@ -37,18 +37,18 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
         left = Tree(left_id)
         if left_id < 0:
             left.is_leave = True
-            left.value = leaf_value.pop()
+            left.value = leaf_value.pop(0)
         right_id = right_child[i]
         right = Tree(right_id)
         if right_id < 0:
             right.is_leave = True
-            right.value = leaf_value.pop()
+            right.value = leaf_value.pop(0)
 
         branch = None
         while len(branches) > 0:
-            branch = branches.pop()
+            branch = branches.pop(0)
             if branch.is_leave:
-                branch = branches.pop()
+                branch = branches.pop(0)
             else:
                 break
         if branch == None:
@@ -58,15 +58,15 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
             if not left.is_leave:
                 branches.append(left)
                 assert(len(split_feature) > 0)
-                left_split_feature = split_feature.pop()
-                left_threshold = threshold.pop()
+                left.split_feature = split_feature.pop(0)
+                left.threshold = threshold.pop(0)
             branch.left = left
 
             if not right.is_leave:
                 branches.append(right)
                 assert(len(split_feature) > 0)
-                right_split_feature = split_feature.pop()
-                right_threshold = threshold.pop()
+                right.split_feature = split_feature.pop(0)
+                right.threshold = threshold.pop(0)
             branch.right = right
     return root
 
@@ -79,17 +79,14 @@ def readLightGBM(file):
         while i < len(lines):
             line = lines[i]
             if line.startswith('feature_names'):
-               feature_line = line.split('=')[1] 
-               features = feature_line.split(' ')
-               #print(features[:5])
+               features = line.split('=')[1].split('\n')[0].split(' ')
+               print(features[:20])
             if line.startswith('Tree='):
                 #print('\n')
-                #print(line.split('\n')[0])
-                
+                #print(line.split('\n')[0]) 
                 (idx, split_feature) = checkLine(i, 3, lines, 'split_feature')
                 i = idx
                 split_feature = list(map(int, split_feature))
-                #print(split_feature[:5])
                 #print(split_feature)
 
                 (idx, threshold) = checkLine(i, 2, lines, 'threshold')
@@ -120,8 +117,43 @@ def readLightGBM(file):
                         left_child, right_child, leaf_value)
                 forest.append(tree)
             i += 1
-    return forest
+    return (features, forest)
 
 
-forest = readLightGBM("lightgbm.txt")
+(features, forest) = readLightGBM("lightgbm.txt")
+
+def readInput(file):
+    inputs = []
+    with open(file) as infile:
+        lines = infile.readlines()
+    head = lines[0].split('\n')[0].split(',')
+    head[0] = 'click'
+    for i in range(1, len(lines)):
+        line = lines[i].split('\n')[0].split(',')
+        line = list(map(float, line))
+        inputs.append(line)
+    return (head, inputs)
+
 print(len(forest))
+(head, inputs) = readInput('sample.csv')
+assert(head == features)
+
+sample = inputs[0]
+tree = forest[0]
+
+def printTree(tree):
+    if not tree.is_leave:
+        print(tree.id, tree.split_feature, tree.threshold, \
+                tree.is_leave, tree.left.id, tree.right.id)
+        printTree(tree.left)
+        printTree(tree.right)
+    else:
+        print(tree.id, tree.split_feature, tree.threshold, \
+                tree.is_leave, tree.value)
+
+printTree(tree)
+
+def predict(tree, sample):
+    while not tree.is_leave:
+
+
