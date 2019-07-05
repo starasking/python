@@ -2,6 +2,8 @@
 # Created date: 2019-07-04
 # Copyright: Xuemei Wang
 
+import math
+
 def checkLine(idx, add_lines, lines, keyword):
     idx += add_lines
     line = lines[idx]
@@ -134,7 +136,7 @@ def readInput(file):
         inputs.append(line)
     return (head, inputs)
 
-print(len(forest))
+#print(len(forest))
 (head, inputs) = readInput('sample.csv')
 assert(head == features)
 
@@ -151,16 +153,47 @@ def printTree(tree):
         print(tree.id, tree.split_feature, tree.threshold, \
                 tree.is_leave, tree.value)
 
-printTree(tree)
+#printTree(tree)
 
-def predict(tree, sample):
-    while not tree.is_leave:
-        value = sample[tree.split_feature]
-        if value <= tree.threshold:
-            tree = tree.left
-        else:
-            tree = tree.right
-    return tree.value
+def sigmoid(x):
+    return 1.0/(1.0 + math.exp(-x))
 
-prediction = predict(tree, sample)
-print(prediction)
+def predict(forest, sample):
+    result = 0
+    for tree in forest:
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result += tree.value
+    return sigmoid(result)
+
+def predict_2(forest, sample):
+    result = 0
+    for tree in forest:
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result += sigmoid(tree.value)
+    return result/300.0
+
+def predict_all(forest, inputs):
+    result = []
+    for sample in inputs:
+        prediction = predict(forest, sample)
+        result.append(prediction)
+    return result
+        
+prediction = predict(forest, sample)
+prediction_2 = predict_2(forest, sample)
+prediction_all = predict_all(forest, inputs)
+#print(prediction)
+#print(prediction_2)
+for item in prediction_all:
+    print(item)
+#print(prediction_all)
