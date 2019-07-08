@@ -32,21 +32,39 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
     root_threshold = threshold[0]
     root = Tree(0, root_split_feature, root_threshold)
     branches = [root]
+    waiting_list = set(root.id)
 
     for i in range(len(left_child)):
+
+        assert(len(waiting_list) > 0)
+        current_id = min(waiting_list)
+        assert(len(branches) > 0)
+
+        branch = None
+        for item in branches:
+            if item.id == current_id:
+                waiting_list.remove(current_id)
+                branch = item
+
         #print(i)
         left_id = left_child[i]
         left = Tree(left_id)
         if left_id < 0:
             left.is_leave = True
             left.value = leaf_value.pop(0)
+        else:
+            waiting_list.add(left.id)
         right_id = right_child[i]
         right = Tree(right_id)
         if right_id < 0:
             right.is_leave = True
             right.value = leaf_value.pop(0)
+        else:
+            waiting_list.add(right.id)
 
-        branch = None
+
+        
+        # TODO
         while len(branches) > 0:
             branch = branches.pop(0)
             if branch.is_leave:
