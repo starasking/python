@@ -75,6 +75,7 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
     
 def readLightGBM(file):
     forest = []
+    weight = []
     with open(file) as infile:
         lines = infile.readlines()
         i = 0
@@ -84,32 +85,37 @@ def readLightGBM(file):
                features = line.split('=')[1].split('\n')[0].split(' ')
                #print(features[:20])
             if line.startswith('Tree='):
-                #print('\n')
-                #print(line.split('\n')[0]) 
+                print('\n')
+                print("tree =",int(line.split('\n')[0].split('=')[1]) + 1) 
                 (idx, split_feature) = checkLine(i, 3, lines, 'split_feature')
                 i = idx
                 split_feature = list(map(int, split_feature))
-                #print(split_feature)
+                print(split_feature[:50])
+                for j in range(50):
+                    print(split_feature[j], features[split_feature[j]])
 
                 (idx, threshold) = checkLine(i, 2, lines, 'threshold')
                 i = idx
                 threshold = list(map(float, threshold))
-                #print(threshold[:5])
+                #print(threshold[:20])
 
                 (idx, left_child) = checkLine(i, 2, lines, 'left_child')
                 i = idx
                 left_child = list(map(int, left_child))
-                #print(left_child[:5])
+                #print(left_child[:20])
 
                 (idx, right_child) = checkLine(i, 1, lines, 'right_child')
                 i = idx
                 right_child = list(map(int, right_child))
-                #print(right_child[:5])
+                #print(right_child[:20])
 
                 (idx, leaf_value) = checkLine(i, 1, lines, 'leaf_value')
                 leaf_value = list(map(float, leaf_value))
-                #print(leaf_value[:5])
-                #print(leaf_value)
+                #print(leaf_value[:20])
+
+                (idx, shrinkage) = checkLine(i, 5, lines, 'shrinkage')
+                weight.append(float(shrinkage[0]))
+                #print(shrinkage)
 
                 #print(len(split_feature), len(threshold), \
                         #len(left_child), len(right_child), \
@@ -119,10 +125,10 @@ def readLightGBM(file):
                         left_child, right_child, leaf_value)
                 forest.append(tree)
             i += 1
-    return (features, forest)
+    return (features, forest, weight)
 
 
-(features, forest) = readLightGBM("lightgbm.txt")
+(features, forest, weight) = readLightGBM("lightgbm.txt")
 
 def readInput(file):
     inputs = []
@@ -150,28 +156,19 @@ def printTree(tree):
         printTree(tree.left)
         printTree(tree.right)
     else:
-        print(tree.id, tree.split_feature, tree.threshold, \
+        print(tree.id, tree.threshold, tree.split_feature, \
                 tree.is_leave, tree.value)
 
-#printTree(tree)
+printTree(tree)
 
 def sigmoid(x):
     return 1.0/(1.0 + math.exp(-x))
 
-def predict(forest, sample):
-    result = 0
-    for tree in forest:
-        while not tree.is_leave:
-            value = sample[tree.split_feature]
-            if value <= tree.threshold:
-                tree = tree.left
-            else:
-                tree = tree.right
-        result += tree.value
-    return sigmoid(result)
+def logit(x):
+    return math.log(x/(1.0-x))
 
-def predict_2(forest, sample):
-    result = 0
+def findLeave(forest, sample):
+    result = []
     for tree in forest:
         while not tree.is_leave:
             value = sample[tree.split_feature]
@@ -179,21 +176,69 @@ def predict_2(forest, sample):
                 tree = tree.left
             else:
                 tree = tree.right
-        result += sigmoid(tree.value)
+        result.append(-tree.id)
+    return result
+
+def predict(forest, sample, weight):
+    result = 0
+    for i in range(len(forest)):
+        tree = forest[i]
+        shrinkage = weight[i]
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result += 1.0 / shrinkage * tree.value
+    return result
+
+def predict_1(forest, sample, weight):
+    result = 0
+    denominator = sum(weight)
+    for i in range(len(forest)):
+        tree = forest[i]
+        shrinkage = weight[i]
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result += shrinkage * sigmoid(tree.value)
+    return result/denominator
+
+def predict_2(forest, sample, weight):
+    result = 0
+    for i in range(len(forest)):
+        tree = forest[i]
+        shrinkage = weight[i]
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result += shrinkage * sigmoid(tree.value)
     return result/300.0
 
-def predict_all(forest, inputs):
+def predict_all(forest, inputs, weight):
     result = []
     for sample in inputs:
-        prediction = predict(forest, sample)
+        prediction = predict(forest, sample, weight)
         result.append(prediction)
     return result
         
-prediction = predict(forest, sample)
-prediction_2 = predict_2(forest, sample)
-prediction_all = predict_all(forest, inputs)
+'''
+prediction = predict(forest, sample, weight)
+leaf =  findLeave(forest, sample)
+#print(leaf)
+prediction_2 = predict_2(forest, sample, weight)
+prediction_1 = predict_1(forest, sample, weight)
+prediction_all = predict_all(forest, inputs, weight)
 #print(prediction)
-#print(prediction_2)
+#print(prediction_1)
 for item in prediction_all:
     print(item)
 #print(prediction_all)
+'''
