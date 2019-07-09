@@ -31,14 +31,27 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
     root_split_feature = split_feature[0]
     root_threshold = threshold[0]
     root = Tree(0, root_split_feature, root_threshold)
+
     branches = [root]
-    waiting_list = set()
-    waiting_list.add(root.id)
+    waiting_list = [root.id]
+    layer = 1 
+    num = layer
+    non_valid = 0
+    count = 0
 
     for i in range(len(left_child)):
+
         assert(len(waiting_list) > 0)
         assert(len(branches) > 0)
-        current_id = min(waiting_list)
+        if num == 0:
+            non_valid = count
+            layer = 2 * layer - non_valid
+            num = layer
+            count = 0
+        #print(num, layer, non_valid, len(waiting_list))
+        #print(waiting_list)
+        current_id = min(waiting_list[:num])
+        num -= 1
 
         branch = None
         for item in branches:
@@ -48,15 +61,18 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
                 branches.remove(item)
                 break
 
-        print(item.id, waiting_list)
-        input("pause")
+        #print(item.id, waiting_list)
         left_id = left_child[i]
         left = Tree(left_id)
         if left_id < 0:
             left.is_leave = True
             left.value = leaf_value.pop(0)
+            count += 1
+            #print(left_id, count)
+            #print(left_child[:i])
+            #input("pause")
         else:
-            waiting_list.add(left.id)
+            waiting_list.append(left.id)
             branches.append(left)
 
         right_id = right_child[i]
@@ -64,8 +80,12 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
         if right_id < 0:
             right.is_leave = True
             right.value = leaf_value.pop(0)
+            count += 1
+            #print(right_id, count)
+            #print(right_child[:i])
+            #input("pause")
         else:
-            waiting_list.add(right.id)
+            waiting_list.append(right.id)
             branches.append(right)
         
         # TODO
@@ -116,7 +136,8 @@ def readLightGBM(file):
                 (idx, left_child) = checkLine(i, 2, lines, 'left_child')
                 i = idx
                 left_child = list(map(int, left_child))
-                #print(left_child[:20])
+                #print(left_child[64:128])
+                #input("pause")
 
                 (idx, right_child) = checkLine(i, 1, lines, 'right_child')
                 i = idx
@@ -200,7 +221,21 @@ def printTree(tree):
         print(tree.id, tree.threshold, tree.split_feature, \
                 tree.is_leave, tree.value)
 
-printTree(tree)
+#printTree(tree)
+
+def findLeave(forest, sample):
+    result = []
+    for tree in forest:
+        while not tree.is_leave:
+            value = sample[tree.split_feature]
+            if value <= tree.threshold:
+                tree = tree.left
+            else:
+                tree = tree.right
+        result.append(tree.id)
+    return result
+leaf =  findLeave(forest, sample)
+print(leaf)
 
 """
 def sigmoid(x):
@@ -261,19 +296,6 @@ def predict_all(forest, inputs, weight):
         result.append(prediction)
     return result
 """
-def findLeave(forest, sample):
-    result = []
-    for tree in forest:
-        while not tree.is_leave:
-            value = sample[tree.split_feature]
-            if value <= tree.threshold:
-                tree = tree.left
-            else:
-                tree = tree.right
-        result.append(tree.id)
-    return result
-leaf =  findLeave(forest, sample)
-print(leaf)
 '''
 prediction = predict(forest, sample, weight)
 prediction_2 = predict_2(forest, sample, weight)
