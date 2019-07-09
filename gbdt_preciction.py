@@ -61,7 +61,9 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
                 branches.remove(item)
                 break
 
-        #print(item.id, waiting_list)
+        #print(features[split_feature[current_id]])
+        #print(current_id)
+        #input("pause")
         left_id = left_child[i]
         left = Tree(left_id)
         if left_id < 0:
@@ -189,7 +191,6 @@ def readLightGBM(file):
             i += 1
     return (features, forest, weight)
 
-
 (features, forest, weight) = readLightGBM("lightgbm.txt")
 
 def readInput(file):
@@ -211,17 +212,17 @@ assert(head == features)
 sample = inputs[0]
 tree = forest[0]
 
-def printTree(tree):
+def printTree(tree, features):
     if not tree.is_leave:
-        print(tree.id, tree.split_feature, tree.threshold, \
+        print(tree.id, features[tree.split_feature], tree.threshold, \
                 tree.is_leave, tree.left.id, tree.right.id)
-        printTree(tree.right)
-        printTree(tree.left)
+        printTree(tree.right, features)
+        printTree(tree.left, features)
     else:
-        print(tree.id, tree.threshold, tree.split_feature, \
+        print(tree.id, tree.threshold, features[tree.split_feature], \
                 tree.is_leave, tree.value)
 
-#printTree(tree)
+printTree(tree, features)
 
 def findLeave(forest, sample):
     result = []
@@ -234,8 +235,8 @@ def findLeave(forest, sample):
                 tree = tree.right
         result.append(tree.id)
     return result
-leaf =  findLeave(forest, sample)
-print(leaf)
+#leaf =  findLeave(forest, sample)
+#print(leaf)
 
 """
 def sigmoid(x):
