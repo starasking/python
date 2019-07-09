@@ -32,21 +32,24 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
     root_threshold = threshold[0]
     root = Tree(0, root_split_feature, root_threshold)
     branches = [root]
-    waiting_list = set(root.id)
+    waiting_list = set()
+    waiting_list.add(root.id)
 
     for i in range(len(left_child)):
-
         assert(len(waiting_list) > 0)
-        current_id = min(waiting_list)
         assert(len(branches) > 0)
+        current_id = min(waiting_list)
 
         branch = None
         for item in branches:
             if item.id == current_id:
                 waiting_list.remove(current_id)
                 branch = item
+                branches.remove(item)
+                break
 
-        #print(i)
+        print(item.id, waiting_list)
+        input("pause")
         left_id = left_child[i]
         left = Tree(left_id)
         if left_id < 0:
@@ -54,6 +57,8 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
             left.value = leaf_value.pop(0)
         else:
             waiting_list.add(left.id)
+            branches.append(left)
+
         right_id = right_child[i]
         right = Tree(right_id)
         if right_id < 0:
@@ -61,39 +66,25 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
             right.value = leaf_value.pop(0)
         else:
             waiting_list.add(right.id)
-
-
+            branches.append(right)
         
         # TODO
-        while len(branches) > 0:
-            branch = branches.pop(0)
-            if branch.is_leave:
-                branch = branches.pop(0)
-            else:
-                break
-        if branch == None:
-            assert(len(branches) == 0)
-            break
-        else:
-            if not left.is_leave:
-                branches.append(left)
-                assert(len(split_feature) > 0)
-                #print(left.id)
-                left.split_feature = split_feature[left.id]
-                left.threshold = threshold[left.id]
-                #print(left.id, left.split_feature, left.threshold, left.is_leave)
-            branch.left = left
+        assert(branch != None)
 
-            if not right.is_leave:
-                branches.append(right)
-                assert(len(split_feature) > 0)
-                #print(right.id)
-                right.split_feature = split_feature[right.id]
-                right.threshold = threshold[right.id]
-                #print(right.id, right.split_feature, right.threshold, right.is_leave)
-            branch.right = right
+        if not left.is_leave:
+            assert(len(split_feature) > 0)
+            left.split_feature = split_feature[left.id]
+            left.threshold = threshold[left.id]
+            #print(left.id, left.split_feature, left.threshold, left.is_leave)
+        branch.left = left
+
+        if not right.is_leave:
+            assert(len(split_feature) > 0)
+            right.split_feature = split_feature[right.id]
+            right.threshold = threshold[right.id]
+            #print(right.id, right.split_feature, right.threshold, right.is_leave)
+        branch.right = right
     return root
-
     
 def readLightGBM(file):
     forest = []
@@ -145,23 +136,32 @@ def readLightGBM(file):
                         #len(leaf_value))
                 #input("pause")
                 '''
-                print(features[split_feature[0]], features[split_feature[2]], features[split_feature[1]], \
-                        features[split_feature[3]], features[split_feature[6]], features[split_feature[4]], \
-                        features[split_feature[5]], features[split_feature[9]], features[split_feature[8]], \
-                        features[split_feature[14]], features[split_feature[13]], features[split_feature[7]], \
-                        features[split_feature[10]], features[split_feature[21]], features[split_feature[19]])
-                print(features[split_feature[0]], features[split_feature[2]], features[split_feature[1]], \
-                        features[split_feature[4]], features[split_feature[5]], features[split_feature[3]], \
-                        features[split_feature[6]], features[split_feature[21]], features[split_feature[19]], \
-                        features[split_feature[7]], features[split_feature[10]], features[split_feature[14]], \
-                        features[split_feature[13]], features[split_feature[9]], features[split_feature[8]])
+                print(features[split_feature[0]], features[split_feature[2]], \
+                        features[split_feature[1]], features[split_feature[3]], \
+                        features[split_feature[6]], features[split_feature[4]], \
+                        features[split_feature[5]], features[split_feature[9]], \
+                        features[split_feature[8]], features[split_feature[14]], \
+                        features[split_feature[13]], features[split_feature[7]], \
+                        features[split_feature[10]], features[split_feature[21]], \
+                        features[split_feature[19]])
+                print(features[split_feature[0]], features[split_feature[2]], \
+                        features[split_feature[1]], features[split_feature[4]], 
+                        features[split_feature[5]], features[split_feature[3]], \
+                        features[split_feature[6]], features[split_feature[21]], \
+                        features[split_feature[19]], features[split_feature[7]], 
+                        features[split_feature[10]], features[split_feature[14]], \
+                        features[split_feature[13]], features[split_feature[9]], 
+                        features[split_feature[8]])
+                print(features[split_feature[0]], features[split_feature[2]], \
+                        features[split_feature[1]], features[split_feature[4]], 
+                        features[split_feature[5]], features[split_feature[3]], \
+                        features[split_feature[6]], features[split_feature[14]], \
+                        features[split_feature[13]], features[split_feature[7]], 
+                        features[split_feature[10]], features[split_feature[9]], \
+                        features[split_feature[8]], features[split_feature[21]], \
+                        features[split_feature[19]])
+                input("pause")
                 '''
-                print(features[split_feature[0]], features[split_feature[2]], features[split_feature[1]], \
-                        features[split_feature[4]], features[split_feature[5]], features[split_feature[3]], \
-                        features[split_feature[6]], features[split_feature[14]], features[split_feature[13]], \
-                        features[split_feature[7]], features[split_feature[10]], features[split_feature[9]], \
-                        features[split_feature[8]], features[split_feature[21]], features[split_feature[19]])
-                #input("pause")
                 tree = buildTree(split_feature, threshold, \
                         left_child, right_child, leaf_value)
                 forest.append(tree)
@@ -202,6 +202,7 @@ def printTree(tree):
 
 printTree(tree)
 
+"""
 def sigmoid(x):
     return 1.0/(1.0 + math.exp(-x))
 
@@ -224,7 +225,6 @@ def predict(forest, sample, weight):
     return result
 
 
-"""
 def predict_1(forest, sample, weight):
     result = 0
     denominator = sum(weight)
