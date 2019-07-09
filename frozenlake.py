@@ -6,6 +6,7 @@ import numpy as np
 import random
 
 GAMMA = 0.5
+EPSILON = 1.0E-5
 Lake = np.array([['S', 'F', 'F', 'F', 'F', 'F', 'F', 'F'],
                  ['F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'],
                  ['F', 'F', 'F', 'H', 'F', 'F', 'F', 'F'],
@@ -35,6 +36,38 @@ def get_next_location(location, action):
     if action == 'right':
         return (row, min(col + 1, COLS - 1))
 
+def policy_evaluate(pi, V):
+    dis_max = 1.0
+    result = V.copy()
+    while(dis_max > EPSILON):
+        dis_max = 0.0
+        for i in range(V.shape[0]):
+            for j in range(V.shape[1]):
+                action = pi[i][j]
+                prob_location = get_next_prob_location((i, j), action)
+                R = get_return((i, j), action)
+                for next_location in prob_location.keys():
+                    prob = prob_location[next_location]
+                    r = R[next_location]
+                    value = V(next_location)
+                    retult[i][j] = prob * ( r + GAMMA * value)
+                    if (result[i][j] - V[i][j]) > dis_max:
+                        dis_max = abs(result[i][j] - V[i][j])
+        V = result.copy()
+    return result
+
+def get_next_prob_location(location, action):
+    row = location[0]
+    col = location[1]
+    prob = (1.0 - PROB)/3.0
+    result = {(max(row - 1, 0), col): prob, \
+              (min(row + 1, ROWS -1), col): prob, \
+              (row, max(col - 1, 0)): prob, \
+              (row, min(col + 1, COLS - 1)): prob}
+    next_location = get_next_location(location, action)
+    result[next_location] = PROB
+    return result
+
 def get_prob_value(location, action, V_input):
     row = location[0]
     col = location[1]
@@ -44,32 +77,6 @@ def get_prob_value(location, action, V_input):
     for i in range(len(ACTIONS)):
         result += prob[i] * V_input[get_next_location(location, ACTIONS[i])]
     return result
-
-
-def get_next_prob_location(location, action_intend):
-    action = action_intend
-    row = location[0]
-    col = location[1]
-    prob = np.full(4, (1.0 - PROB)/3.0)
-    prob[ACTIONS.index(action_intend)] = PROB
-
-    bias = 0.0
-    random_number = random.uniform(0, 1)
-    for i in range(len(prob)):
-        prob[i] += bias
-        bias = prob[i]
-        if random_number < prob[i]:
-            action = ACTIONS[i]
-            break
-
-    if action == 'up':
-        return (max(row - 1, 0), col)
-    if action == 'down':
-        return (min(row + 1, ROWS - 1), col)
-    if action == 'left':
-        return (row, max(col - 1, 0))
-    if action == 'right':
-        return (row, min(col + 1, COLS - 1))
 
 def is_terminated(location, action):
     row = location[0]
@@ -88,6 +95,35 @@ def is_terminated(location, action):
         return (1, -1)
     return (0, 0)
 
+def get_return(location, action):
+    next_location = get_next_location(location, action)
+    value = is_terminated(location, action)[1] 
+    return (next_location, value)
+
+def policy_improve(pi, V):
+    for row in range(ROWS):
+        for col in range(COLS):
+            for action in ACTIONS:
+                location = (row, col)
+                R = is_terminated(location, action)[1]
+                next_location = get_location(location, action)
+                Q = R + GAMMA * V[next_location]
+                # TODO: change to probability expression
+                #v = get_prob_value(location, action, V)
+                #Q = R + GAMMA * v
+                if V[location] < Q:
+                    V[location] = Q
+                    pi[location] = action
+    print(V)
+    print(pi)
+    print(V)
+    print(pi)
+    #if np.array_equal(V, V):
+    if np.array_equal(pi, pi):
+        break
+    V = V
+    pi = pi
+
 def policy_iterate():
     #initialize
     V = np.array([[0 for i in range(ROWS)] for j in range(COLS)], dtype = np.float64)
@@ -97,27 +133,10 @@ def policy_iterate():
 
     # iterate
     while True:
-        # update value
-        trajectory = []
-        start = (0, 0)
-        current = start
-        terminated = (is_terminated(current, pi[current])[0] == 1)
+        # policy valuation
+        V_new = policy_evaluate(pi, V)
+        V = V_new
 
-        while not terminated:
-            # break inner loop
-            if current in set(trajectory):
-                value = -1.0
-                V[current] = value
-                break
-
-            trajectory.append(current)
-            print(trajectory)
-            current = get_next_location(current, pi[current])
-            #current = get_next_prob_location(current, pi[current])
-            terminated = (is_terminated(current, pi[current])[0] == 1)
-
-        value = is_terminated(current, pi[current])[1]
-        V[current] = value
 
         while len(trajectory) > 0:
             location = trajectory.pop()
