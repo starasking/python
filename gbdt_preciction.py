@@ -201,6 +201,9 @@ def readInput(file):
 assert(head == features)
 
 sample = inputs[0]
+assert(len(sample) == len(features))
+for i in range(len(sample)):
+    print(sample[i], features[i])
 tree = forest[0]
 
 def printTree(tree, features):
@@ -216,21 +219,23 @@ def printTree(tree, features):
 
 printTree(tree, features)
 
-def findLeave(forest, sample):
+def findLeave(forest, sample, features):
     result = []
     for tree in forest:
         while not tree.is_leave:
             value = sample[tree.split_feature]
+            print(features[tree.split_feature], tree.threshold, value)
             if value <= tree.threshold:
                 tree = tree.left
             else:
                 tree = tree.right
         result.append(tree.id)
+        print(tree.id)
+        #input("pause")
     return result
-leaf =  findLeave(forest, sample)
-print(leaf)
+leaf =  findLeave(forest, sample, features)
+#print(leaf)
 
-"""
 def sigmoid(x):
     return 1.0/(1.0 + math.exp(-x))
 
@@ -242,7 +247,9 @@ def predict(forest, sample, weight):
     result = 0
     for i in range(len(forest)):
         tree = forest[i]
-        shrinkage = weight[i]
+        #shrinkage = 0.116
+        shrinkage = 1.0
+        #shrinkage = weight[i]
         while not tree.is_leave:
             value = sample[tree.split_feature]
             if value <= tree.threshold:
@@ -250,9 +257,10 @@ def predict(forest, sample, weight):
             else:
                 tree = tree.right
         result += shrinkage * tree.value
-    return result
+    return sigmoid(result)
 
 
+"""
 def predict_1(forest, sample, weight):
     result = 0
     denominator = sum(weight)
@@ -282,21 +290,22 @@ def predict_2(forest, sample, weight):
         result += shrinkage * sigmoid(tree.value)
     return result/300.0
 
+prediction = predict(forest, sample, weight)
+print(prediction)
 def predict_all(forest, inputs, weight):
     result = []
     for sample in inputs:
         prediction = predict(forest, sample, weight)
         result.append(prediction)
     return result
-"""
-'''
-prediction = predict(forest, sample, weight)
-prediction_2 = predict_2(forest, sample, weight)
-prediction_1 = predict_1(forest, sample, weight)
 prediction_all = predict_all(forest, inputs, weight)
-#print(prediction)
-#print(prediction_1)
+print("============================")
 for item in prediction_all:
     print(item)
+"""
+'''
+prediction_2 = predict_2(forest, sample, weight)
+prediction_1 = predict_1(forest, sample, weight)
+#print(prediction_1)
 #print(prediction_all)
 '''
