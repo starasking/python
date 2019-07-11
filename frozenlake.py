@@ -36,26 +36,6 @@ def get_next_location(location, action):
     if action == 'right':
         return (row, min(col + 1, COLS - 1))
 
-def policy_evaluate(pi, V):
-    dis_max = 1.0
-    result = V.copy()
-    while(dis_max > EPSILON):
-        dis_max = 0.0
-        for i in range(V.shape[0]):
-            for j in range(V.shape[1]):
-                action = pi[i][j]
-                prob_location = get_next_prob_location((i, j), action)
-                R = get_return((i, j), action)
-                for next_location in prob_location.keys():
-                    prob = prob_location[next_location]
-                    r = R[next_location]
-                    value = V(next_location)
-                    retult[i][j] = prob * ( r + GAMMA * value)
-                    if (result[i][j] - V[i][j]) > dis_max:
-                        dis_max = abs(result[i][j] - V[i][j])
-        V = result.copy()
-    return result
-
 def get_next_prob_location(location, action):
     row = location[0]
     col = location[1]
@@ -68,14 +48,24 @@ def get_next_prob_location(location, action):
     result[next_location] = PROB
     return result
 
-def get_prob_value(location, action, V_input):
+def get_prob_return(location):
     row = location[0]
     col = location[1]
-    prob = np.full(4, (1.0 - PROB)/3.0)
-    prob[ACTIONS.index(action)] = PROB
+    result = {(max(row - 1, 0), col): is_terminated(location, 'up')[1], \
+              (min(row + 1, ROWS -1), col): is_terminated(location, 'down')[1], \
+              (row, max(col - 1, 0)): is_terminated(location, 'left')[1], \
+              (row, min(col + 1, COLS - 1)): is_terminated(location, 'right')[1]}
+    return result
+
+
+def get_prob_value(location, V_input):
+    row = location[0]
+    col = location[1]
     result = 0.0
-    for i in range(len(ACTIONS)):
-        result += prob[i] * V_input[get_next_location(location, ACTIONS[i])]
+    result = {(max(row - 1, 0), col): V_input[(max(row - 1, 0), col)], \
+              (min(row + 1, ROWS -1), col):  V_input[(min(row + 1, ROWS -1), col)], \
+              (row, max(col - 1, 0)): V_input[(row, max(col - 1, 0))], \
+              (row, min(col + 1, COLS - 1)): V_input[(row, min(col + 1, COLS - 1))]}
     return result
 
 def is_terminated(location, action):
@@ -100,74 +90,75 @@ def get_return(location, action):
     value = is_terminated(location, action)[1] 
     return (next_location, value)
 
+def policy_evaluate(pi, V):
+    dis_max = 1.0
+    result = V.copy()
+    while(dis_max > EPSILON):
+        dis_max = 0.0
+        for i in range(V.shape[0]):
+            for j in range(V.shape[1]):
+                action = pi[i][j]
+                prob_locations = get_next_prob_location((i, j), action)
+                prob_returns = get_prob_return((i, j))
+                for next_location in prob_locations.keys():
+                    prob = prob_locations[next_location]
+                    r = prob_returns[next_location]
+                    value = V[next_location]
+                    result[i][j] = prob * ( r + GAMMA * value)
+                    if (result[i][j] - V[i][j]) > dis_max:
+                        dis_max = abs(result[i][j] - V[i][j])
+                print(i, j, dis_max)
+                #input("pause")
+        V = result.copy()
+    return result
+
 def policy_improve(pi, V):
+    V_update = V
+    pi_update = pi
     for row in range(ROWS):
         for col in range(COLS):
+            value = V[location]
+            pi_star = pi[location]
             for action in ACTIONS:
                 location = (row, col)
-                R = is_terminated(location, action)[1]
-                next_location = get_location(location, action)
-                Q = R + GAMMA * V[next_location]
-                # TODO: change to probability expression
-                #v = get_prob_value(location, action, V)
+                next_prob_locations = get_next_prob_location(location, action)
+                next_prob_returns = get_prob_return(location)
+                next_prob_values = get_prob_value(location, V)
+                Q = 0
+                for location in next_prob_locations.keys():
+                    Q += next_prob_locations[location] * (next_prob_returns[location] + \
+                            GAMMA * next_prob_values[location])
                 #Q = R + GAMMA * v
-                if V[location] < Q:
-                    V[location] = Q
-                    pi[location] = action
-    print(V)
-    print(pi)
-    print(V)
-    print(pi)
-    #if np.array_equal(V, V):
-    if np.array_equal(pi, pi):
-        break
-    V = V
-    pi = pi
+                if value < Q:
+                    value = Q
+                    pi_star = action
+            print(pi)
+            V_update[location] = value
+            pi[location] = pi_star
+    return(V_update, pi_update)
 
 def policy_iterate():
     #initialize
     V = np.array([[0 for i in range(ROWS)] for j in range(COLS)], dtype = np.float64)
     pi = sample_action()
-    print(V)
-    print(pi)
 
     # iterate
-    while True:
+    threshold = 5000
+    i = 0
+    while i < threshold:
+        i += 1
         # policy valuation
         V_new = policy_evaluate(pi, V)
         V = V_new
-
-
-        while len(trajectory) > 0:
-            location = trajectory.pop()
-            V[location] = value * GAMMA
-            value = V[location]
+        print(i)
+        print(V)
 
         # update policy
-        V_next = np.copy(V)
-        pi_next = np.copy(pi)
-
-        for row in range(ROWS):
-            for col in range(COLS):
-                for action in ACTIONS:
-                    location = (row, col)
-                    R = is_terminated(location, action)[1]
-                    next_location = get_next_location(location, action)
-                    Q = R + GAMMA * V[next_location]
-                    # TODO: change to probability expression
-                    #v_next = get_prob_value(location, action, V)
-                    #Q = R + GAMMA * v_next
-                    if V_next[location] < Q:
-                        V_next[location] = Q
-                        pi_next[location] = action
-        print(V)
-        print(pi)
-        print(V_next)
-        print(pi_next)
-        #if np.array_equal(V_next, V):
-        if np.array_equal(pi_next, pi):
-            break
-        V = V_next
-        pi = pi_next
+        (V_update, pi_update) = policy_improve(pi, V)
+        if pi_update == pi:
+            return (V, pi)
+        else:
+            V = V_update
+            pi = pi_update
     return (V, pi)
 policy_iterate()
