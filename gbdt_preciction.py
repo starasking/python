@@ -34,24 +34,13 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
 
     branches = [root]
     waiting_list = [root.id]
-    layer = 1 
-    num = layer
-    non_valid = 0
-    count = 0
 
     for i in range(len(left_child)):
 
         assert(len(waiting_list) > 0)
         assert(len(branches) > 0)
-        if num == 0:
-            non_valid = count
-            layer = 2 * layer - non_valid
-            num = layer
-            count = 0
-        #print(num, layer, non_valid, len(waiting_list))
         #print(waiting_list)
-        current_id = min(waiting_list[:num])
-        num -= 1
+        current_id = min(waiting_list)
 
         branch = None
         for item in branches:
@@ -69,8 +58,6 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
         if left_id < 0:
             left.is_leave = True
             left.value = leaf_value.pop(0)
-            count += 1
-            #print(left_id, count)
             #print(left_child[:i])
             #input("pause")
         else:
@@ -82,8 +69,6 @@ def buildTree(split_feature, threshold, left_child, right_child, leaf_value):
         if right_id < 0:
             right.is_leave = True
             right.value = leaf_value.pop(0)
-            count += 1
-            #print(right_id, count)
             #print(right_child[:i])
             #input("pause")
         else:
@@ -125,11 +110,9 @@ def readLightGBM(file):
                 (idx, split_feature) = checkLine(i, 3, lines, 'split_feature')
                 i = idx
                 split_feature = list(map(int, split_feature))
-                '''
-                print(split_feature[:50])
-                for j in range(50):
-                    print(split_feature[j], features[split_feature[j]])
-                '''
+                #print(split_feature[:50])
+                #for j in range(len(split_feature)):
+                    #print(split_feature[j], features[split_feature[j]])
                 (idx, threshold) = checkLine(i, 2, lines, 'threshold')
                 i = idx
                 threshold = list(map(float, threshold))
@@ -175,14 +158,22 @@ def readLightGBM(file):
                         features[split_feature[10]], features[split_feature[14]], \
                         features[split_feature[13]], features[split_feature[9]], 
                         features[split_feature[8]])
-                print(features[split_feature[0]], features[split_feature[2]], \
-                        features[split_feature[1]], features[split_feature[4]], 
-                        features[split_feature[5]], features[split_feature[3]], \
-                        features[split_feature[6]], features[split_feature[14]], \
-                        features[split_feature[13]], features[split_feature[7]], 
-                        features[split_feature[10]], features[split_feature[9]], \
-                        features[split_feature[8]], features[split_feature[21]], \
-                        features[split_feature[19]])
+                print(features[split_feature[0]], \
+                        features[split_feature[2]], features[split_feature[1]], \
+                        features[split_feature[4]], features[split_feature[5]], \
+                        features[split_feature[3]], features[split_feature[6]], \
+                        features[split_feature[14]], features[split_feature[13]], \
+                        features[split_feature[7]], features[split_feature[10]], \
+                        features[split_feature[9]], features[split_feature[8]], \
+                        features[split_feature[21]], features[split_feature[19]], \
+                        features[split_feature[84]], features[split_feature[16]], \
+                        features[split_feature[15]], features[split_feature[31]], \
+                        features[split_feature[28]], features[split_feature[12]], \
+                        features[split_feature[70]], features[split_feature[24]], \
+                        features[split_feature[56]], features[split_feature[11]], \
+                        features[split_feature[17]], features[split_feature[37]], \
+                        features[split_feature[49]], features[split_feature[16]], \
+                        features[split_feature[29]], features[split_feature[23]])
                 input("pause")
                 '''
                 tree = buildTree(split_feature, threshold, \
@@ -216,10 +207,11 @@ def printTree(tree, features):
     if not tree.is_leave:
         print(tree.id, features[tree.split_feature], tree.threshold, \
                 tree.is_leave, tree.left.id, tree.right.id)
+        #input("pause")
         printTree(tree.right, features)
         printTree(tree.left, features)
     else:
-        print(tree.id, tree.threshold, features[tree.split_feature], \
+        print(tree.id, tree.threshold, \
                 tree.is_leave, tree.value)
 
 printTree(tree, features)
@@ -235,8 +227,8 @@ def findLeave(forest, sample):
                 tree = tree.right
         result.append(tree.id)
     return result
-#leaf =  findLeave(forest, sample)
-#print(leaf)
+leaf =  findLeave(forest, sample)
+print(leaf)
 
 """
 def sigmoid(x):
