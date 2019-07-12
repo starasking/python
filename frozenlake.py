@@ -40,6 +40,7 @@ def get_next_prob_location(location, action):
     row = location[0]
     col = location[1]
     prob = (1.0 - PROB)/3.0
+
     result = {(max(row - 1, 0), col): prob, \
               (min(row + 1, ROWS -1), col): prob, \
               (row, max(col - 1, 0)): prob, \
@@ -48,15 +49,14 @@ def get_next_prob_location(location, action):
     result[next_location] = PROB
     return result
 
-def get_prob_return(location):
+def get_prob_reward(location):
     row = location[0]
     col = location[1]
-    result = {(max(row - 1, 0), col): is_terminated(location, 'up')[1], \
-              (min(row + 1, ROWS -1), col): is_terminated(location, 'down')[1], \
-              (row, max(col - 1, 0)): is_terminated(location, 'left')[1], \
-              (row, min(col + 1, COLS - 1)): is_terminated(location, 'right')[1]}
+    result = {(max(row - 1, 0), col): get_reward((max(row - 1, 0), col)), \
+              (min(row + 1, ROWS -1), col): get_reward((min(row + 1, ROWS -1), col)), \
+              (row, max(col - 1, 0)): get_reward((row, max(col - 1, 0))), \
+              (row, min(col + 1, COLS - 1)): get_reward((row, min(col + 1, COLS - 1)))}
     return result
-
 
 def get_prob_value(location, V_input):
     row = location[0]
@@ -68,72 +68,89 @@ def get_prob_value(location, V_input):
               (row, min(col + 1, COLS - 1)): V_input[(row, min(col + 1, COLS - 1))]}
     return result
 
-def is_terminated(location, action):
+def get_reward(location):
     row = location[0]
     col = location[1]
     if Lake[row][col] == 'H':
-        return (1, -1)
+        return -1
     if Lake[row][col] == 'G':
-        return (1, 1)
-    if row == 0 and action == 'up':
-        return (1, -1)
-    if row == (ROWS -1) and action == 'down':
-        return (1, -1)
-    if col == 0 and action == 'left':
-        return (1, -1)
-    if col == (COLS -1) and action == 'right':
-        return (1, -1)
-    return (0, 0)
+        return 1
+    return 0
+'''
 
-def get_return(location, action):
-    next_location = get_next_location(location, action)
-    value = is_terminated(location, action)[1] 
-    return (next_location, value)
+def get_reward(location, action):
+    row = location[0]
+    col = location[1]
+    if Lake[row][col] == 'H':
+        return -1
+    if Lake[row][col] == 'G':
+        return 1
+    if row == 0 and action == 'up':
+        return -1
+    if row == (ROWS -1) and action == 'down':
+        return -1
+    if col == 0 and action == 'left':
+        return -1
+    if col == (COLS -1) and action == 'right':
+        return -1
+    return 0
+'''
+
+#def get_return(location, action):
+    #next_location = get_next_location(location, action)
+    #value = get_reward(location, action)[1]
+    #return (next_location, value)
 
 def policy_evaluate(pi, V):
     dis_max = 1.0
     result = V.copy()
+    print(V)
+    print(pi)
     while(dis_max > EPSILON):
         dis_max = 0.0
         for i in range(V.shape[0]):
             for j in range(V.shape[1]):
                 action = pi[i][j]
-                prob_locations = get_next_prob_location((i, j), action)
-                prob_returns = get_prob_return((i, j))
-                for next_location in prob_locations.keys():
-                    prob = prob_locations[next_location]
-                    r = prob_returns[next_location]
-                    value = V[next_location]
-                    result[i][j] = prob * ( r + GAMMA * value)
-                    if (result[i][j] - V[i][j]) > dis_max:
-                        dis_max = abs(result[i][j] - V[i][j])
-                print(i, j, dis_max)
-                #input("pause")
+                next_prob_locations = get_next_prob_location((i, j), action)
+                next_prob_rewards = get_prob_reward((i, j))
+                for location in next_prob_locations.keys():
+                    prob = next_prob_locations[location]
+                    r = next_prob_rewards[location]
+                    value = V[location]
+                    result[i][j] += prob * ( r + GAMMA * value)
+                    print(action, prob, r, value)
+                if (result[i][j] - V[i][j]) > dis_max:
+                    dis_max = abs(result[i][j] - V[i][j])
+                print(Lake)
+                print(pi)
+                print(result)
+        input("pause")
         V = result.copy()
     return result
 
 def policy_improve(pi, V):
-    V_update = V
-    pi_update = pi
+    V_update = V.copy()
+    pi_update = pi.copy()
     for row in range(ROWS):
         for col in range(COLS):
-            value = V[location]
+            location = (row, col)
+            value_star = V[location]
             pi_star = pi[location]
             for action in ACTIONS:
-                location = (row, col)
                 next_prob_locations = get_next_prob_location(location, action)
-                next_prob_returns = get_prob_return(location)
-                next_prob_values = get_prob_value(location, V)
+                next_prob_rewards = get_prob_reward(location)
                 Q = 0
-                for location in next_prob_locations.keys():
-                    Q += next_prob_locations[location] * (next_prob_returns[location] + \
-                            GAMMA * next_prob_values[location])
+                for next_location in next_prob_locations.keys():
+                    prob = next_prob_locations[next_location]
+                    r = next_prob_rewards[next_location]
+                    value = V[next_location]
+                    Q += prob * (r + GAMMA * value)
                 #Q = R + GAMMA * v
-                if value < Q:
-                    value = Q
+                if value_star < Q:
+                    value_star = Q
                     pi_star = action
             print(pi)
-            V_update[location] = value
+            V_update[location] = value_star
             pi[location] = pi_star
     return(V_update, pi_update)
 
@@ -155,7 +172,10 @@ def policy_iterate():
 
         # update policy
         (V_update, pi_update) = policy_improve(pi, V)
-        if pi_update == pi:
+        print("======================")
+        print(pi_update)
+        print(pi)
+        if np.array_equal(pi_update, pi):
             return (V, pi)
         else:
             V = V_update
