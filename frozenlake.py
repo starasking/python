@@ -73,12 +73,12 @@ def get_reward(location):
     col = location[1]
     if Lake[row][col] == 'H':
         return -1
-    if Lake[row][col] == 'G':
+    elif Lake[row][col] == 'G':
         return 1
     return 0
-'''
 
-def get_reward(location, action):
+
+def get_action_reward(location, action):
     row = location[0]
     col = location[1]
     if Lake[row][col] == 'H':
@@ -94,37 +94,27 @@ def get_reward(location, action):
     if col == (COLS -1) and action == 'right':
         return -1
     return 0
-'''
 
-#def get_return(location, action):
-    #next_location = get_next_location(location, action)
-    #value = get_reward(location, action)[1]
-    #return (next_location, value)
 
 def policy_evaluate(pi, V):
     dis_max = 1.0
     result = V.copy()
-    print(V)
-    print(pi)
     while(dis_max > EPSILON):
         dis_max = 0.0
-        for i in range(V.shape[0]):
-            for j in range(V.shape[1]):
-                action = pi[i][j]
-                next_prob_locations = get_next_prob_location((i, j), action)
-                next_prob_rewards = get_prob_reward((i, j))
-                for location in next_prob_locations.keys():
-                    prob = next_prob_locations[location]
-                    r = next_prob_rewards[location]
-                    value = V[location]
-                    result[i][j] += prob * ( r + GAMMA * value)
-                    print(action, prob, r, value)
-                if (result[i][j] - V[i][j]) > dis_max:
-                    dis_max = abs(result[i][j] - V[i][j])
-                print(Lake)
-                print(pi)
-                print(result)
-        input("pause")
+        for row in range(V.shape[0]):
+            for col in range(V.shape[1]):
+                location = (row, col)
+                action = pi[location]
+                next_prob_locations = get_next_prob_location(location, action)
+                reward = get_action_reward(location, action)
+                result[location] = reward
+                for next_location in next_prob_locations.keys():
+                    prob = next_prob_locations[next_location]
+                    value = V[next_location]
+                    result[location] += prob * GAMMA * value
+                if abs(result[location] - V[location]) > dis_max:
+                    dis_max = abs(result[location] - V[location])
+                print(dis_max)
         V = result.copy()
     return result
 
@@ -134,24 +124,25 @@ def policy_improve(pi, V):
     for row in range(ROWS):
         for col in range(COLS):
             location = (row, col)
-            value_star = V[location]
             pi_star = pi[location]
+            reward = -100.0
             for action in ACTIONS:
                 next_prob_locations = get_next_prob_location(location, action)
-                next_prob_rewards = get_prob_reward(location)
-                Q = 0
+                Q =get_action_reward(location, action)
                 for next_location in next_prob_locations.keys():
                     prob = next_prob_locations[next_location]
-                    r = next_prob_rewards[next_location]
                     value = V[next_location]
-                    Q += prob * (r + GAMMA * value)
-                #Q = R + GAMMA * v
-                if value_star < Q:
-                    value_star = Q
+                    Q += prob * GAMMA * value
+                #print(reward, Q)
+                #print(pi_update)
+                if reward < Q:
+                    reward = Q
                     pi_star = action
-            print(pi)
-            V_update[location] = value_star
-            pi[location] = pi_star
+            V_update[location] = reward
+            pi_update[location] = pi_star
+   
+            #print(pi_update)
+            #input("pause")
     return(V_update, pi_update)
 
 def policy_iterate():
@@ -166,19 +157,20 @@ def policy_iterate():
         i += 1
         # policy valuation
         V_new = policy_evaluate(pi, V)
-        V = V_new
+        print("======================")
         print(i)
+        print(pi)
         print(V)
 
         # update policy
-        (V_update, pi_update) = policy_improve(pi, V)
-        print("======================")
+        (V_update, pi_update) = policy_improve(pi, V_new)
         print(pi_update)
-        print(pi)
+        print(V_update)
+        input("pause")
         if np.array_equal(pi_update, pi):
             return (V, pi)
         else:
-            V = V_update
-            pi = pi_update
+            V = V_update.copy()
+            pi = pi_update.copy()
     return (V, pi)
 policy_iterate()
