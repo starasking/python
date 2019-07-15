@@ -5,7 +5,7 @@ Auther: Xuemei Wang
 import numpy as np
 import random
 
-GAMMA = 0.5
+GAMMA = 1.0
 EPSILON = 1.0E-5
 Lake = np.array([['S', 'F', 'F', 'F', 'F', 'F', 'F', 'F'],
                  ['F', 'F', 'F', 'F', 'F', 'F', 'F', 'F'],
@@ -114,7 +114,7 @@ def policy_evaluate(pi, V):
                     result[location] += prob * GAMMA * value
                 if abs(result[location] - V[location]) > dis_max:
                     dis_max = abs(result[location] - V[location])
-                print(dis_max)
+                #print(dis_max)
         V = result.copy()
     return result
 
@@ -164,9 +164,10 @@ def policy_iterate():
 
         # update policy
         (V_update, pi_update) = policy_improve(pi, V_new)
+        print(Lake)
         print(pi_update)
         print(V_update)
-        input("pause")
+        #input("pause")
         if np.array_equal(pi_update, pi):
             return (V, pi)
         else:
