@@ -219,6 +219,10 @@ def printTree(tree, features):
 
 printTree(tree, features)
 
+#sample = inputs[17]
+#sample = inputs[18]
+#print(sample)
+#input("pause")
 def findLeave(forest, sample, features):
     result = []
     for tree in forest:
@@ -229,13 +233,14 @@ def findLeave(forest, sample, features):
                 tree = tree.left
             else:
                 tree = tree.right
+        #input("pause")
         result.append(tree.id)
         print(tree.id)
-        #input("pause")
     return result
 leaf =  findLeave(forest, sample, features)
 #print(leaf)
 
+"""
 def sigmoid(x):
     return 1.0/(1.0 + math.exp(-x))
 
@@ -260,7 +265,6 @@ def predict(forest, sample, weight):
     return sigmoid(result)
 
 
-"""
 def predict_1(forest, sample, weight):
     result = 0
     denominator = sum(weight)
